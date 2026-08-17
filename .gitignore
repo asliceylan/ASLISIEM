@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environment
+venv/
+
+# Test artifacts
+.pytest_cache/
+
+# Runtime data directories (created by the app at startup, not source --
+# the real persistent database lives outside the project at ~/.aslisiem_data)
+instance/
+uploads/
+
+# OS
+.DS_Store
+
+# Local tool config (machine/session-specific, not project source)
+.claude/

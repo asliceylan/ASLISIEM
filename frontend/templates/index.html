@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASLISIEM</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="app-shell">
+
+  <div id="sidebar">
+    <div class="brand">ASLISIEM <span>SOC</span></div>
+    <ul id="nav-list">
+      <li data-page="dashboard">📊 Dashboard</li>
+      <li data-page="offenses">🚨 Offenses</li>
+      <li data-page="log-activity">📄 Log Activity</li>
+      <li data-page="network-activity">🌐 Network Activity</li>
+      <li data-page="assets">🖥 Assets</li>
+      <li data-page="rules">🛡 Rules</li>
+      <li data-page="log-sources">🔌 Log Sources</li>
+      <li data-page="admin" id="nav-admin">⚙ Admin</li>
+      <li data-page="tenants" id="nav-tenants">👥 Tenants</li>
+    </ul>
+    <a href="/logout" id="logout-link">🚪 Logout</a>
+  </div>
+
+  <div id="main">
+    <div id="topbar">
+      <h1 id="page-title">Dashboard</h1>
+      <div id="topbar-actions"></div>
+    </div>
+
+    <div id="content">
+
+      <!-- DASHBOARD -->
+      <div class="page" id="page-dashboard">
+        <div class="kpi-row" id="kpi-row"></div>
+        <div class="grid-2">
+          <div class="panel"><h3>Events Over Time</h3><canvas id="chart-events-time" height="110"></canvas></div>
+          <div class="panel"><h3>Offense Severity Distribution</h3><canvas id="chart-severity" height="110"></canvas></div>
+        </div>
+        <div class="grid-3">
+          <div class="panel"><h3>Top Event Types</h3><div id="top-event-types"></div></div>
+          <div class="panel"><h3>Top Source IPs</h3><div id="top-source-ips"></div></div>
+          <div class="panel"><h3>Rule Activity</h3><div id="rule-activity"></div></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel"><h3>Recent Offenses</h3><div id="recent-offenses"></div></div>
+          <div class="panel"><h3>Recent Imports</h3><div id="recent-imports"></div></div>
+        </div>
+      </div>
+
+      <!-- OFFENSES -->
+      <div class="page" id="page-offenses">
+        <!-- Full-admin only (see offenses.js renderOffensesTenantFilter) --
+             multi-select checkbox filter: unlike Log Activity/Rules' single-
+             select tenant cards, several tenants can be shown at once here.
+             No checkbox checked = "All Tenants", always available. -->
+        <div id="offenses-tenant-filter" style="margin-bottom:14px; max-width:420px;"></div>
+        <!-- QRadar-style "Add Filter" builder (status/severity/source_ip/
+             username/tenant_id/created_at) -- see filter_builder.js. AND'd
+             with, and independent of, the tenant filter above. -->
+        <div class="panel" id="offenses-filter-builder" style="margin-bottom:14px;"></div>
+        <div class="panel"><div id="offenses-table"></div></div>
+      </div>
+
+      <!-- OFFENSE DETAIL -->
+      <div class="page" id="page-offense-detail">
+        <button class="secondary" id="back-to-offenses">&larr; Back to Offenses</button>
+        <div id="offense-detail-content" style="margin-top:14px;"></div>
+      </div>
+
+      <!-- LOG ACTIVITY -->
+      <div class="page" id="page-log-activity">
+        <div class="wizard-steps">
+          <span class="log-tab current" data-tab="events">Events</span>
+          <span class="log-tab" data-tab="import">Import AQL Results</span>
+          <span class="log-tab" data-tab="history">Import History</span>
+        </div>
+
+        <div class="log-tab-content" id="log-tab-events">
+          <!-- Full-admin only (see events.js renderLogActivityTenantCards) --
+               tenant context lives entirely inside this page; no other
+               page is affected by which card is selected here. -->
+          <div id="log-activity-tenant-cards" style="margin-bottom:14px; max-width:420px;"></div>
+          <!-- QRadar-style "Add Filter" builder (event_id/event_name/
+               source_ip/.../device_type/log_format/tenant_id/Path) -- see
+               filter_builder.js. AND'd with, and independent of, the
+               tenant card above and the quick-search/source toggle below. -->
+          <div class="panel" id="events-filter-builder" style="margin-bottom:14px;"></div>
+          <div class="toolbar">
+            <input type="text" id="filter-search" placeholder="Search...">
+            <select id="filter-source">
+              <option value="">All Sources</option>
+              <option value="import">Imported</option>
+              <option value="simulator">Simulator</option>
+            </select>
+            <button id="apply-event-filters">Filter</button>
+          </div>
+          <div class="panel"><div id="events-table"></div></div>
+        </div>
+
+        <div class="log-tab-content" id="log-tab-import" style="display:none;">
+          <div class="panel">
+            <h3>Import AQL Query Results</h3>
+            <p style="color:var(--text-dim); font-size:13px;">Upload the CSV or JSON export from your IBM QRadar AQL query.</p>
+            <input type="file" id="import-file-input" accept=".csv,.json">
+            <div id="import-preview-area" style="margin-top:16px;"></div>
+          </div>
+        </div>
+
+        <div class="log-tab-content" id="log-tab-history" style="display:none;">
+          <div class="panel"><div id="import-history-table"></div></div>
+        </div>
+      </div>
+
+      <!-- NETWORK ACTIVITY (placeholder) -->
+      <div class="page" id="page-network-activity">
+        <div class="panel empty-state">Network Activity is not part of the manually-imported event workflow yet.</div>
+      </div>
+
+      <!-- ASSETS -->
+      <div class="page" id="page-assets">
+        <div class="panel"><div id="assets-table"></div></div>
+      </div>
+
+      <!-- RULES -->
+      <div class="page" id="page-rules">
+        <!-- Full-admin only (see rules.js renderRulesTenantCards) -- same
+             page-local tenant context pattern as Log Activity's own
+             #log-activity-tenant-cards; does not affect any other page. -->
+        <div id="rules-tenant-cards" style="margin-bottom:14px; max-width:420px;"></div>
+        <div class="toolbar">
+          <button id="new-rule-btn">+ Create Detection Rule</button>
+        </div>
+        <div class="panel"><div id="rules-table"></div></div>
+      </div>
+
+      <!-- LOG SOURCES -->
+      <div class="page" id="page-log-sources">
+        <div class="panel"><div id="log-sources-table"></div></div>
+      </div>
+
+      <!-- TENANTS (management -- kept physically separate from the
+           log-generation/simulator UI on the Simulators page below) -->
+      <div class="page" id="page-tenants">
+        <div class="toolbar">
+          <button id="new-tenant-btn">+ New Tenant</button>
+        </div>
+        <div class="panel"><div id="tenants-table"></div></div>
+        <div class="toolbar" style="margin-top:18px;">
+          <button id="new-user-btn">+ New User</button>
+        </div>
+        <div class="panel"><div id="users-table"></div></div>
+      </div>
+
+      <!-- ADMIN (MITRE ATT&CK catalog sync only -- log-generation moved to
+           its own Simulators page below, kept physically separate) -->
+      <div class="page" id="page-admin">
+        <div id="mitre-admin-panel"></div>
+      </div>
+
+      <!-- SIMULATORS (log-generation -- kept physically separate from
+           Tenants/Admin management pages) -->
+      <div class="page" id="page-simulators">
+        <div id="simulator-admin-panel"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tenant_multiselect.js') }}"></script>
+<script src="{{ url_for('static', filename='js/filter_builder.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mitre.js') }}"></script>
+<script src="{{ url_for('static', filename='js/simulator.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/events.js') }}"></script>
+<script src="{{ url_for('static', filename='js/imports.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rules.js') }}"></script><script src="{{ url_for('static', filename='js/offenses.js') }}"></script>
+<script src="{{ url_for('static', filename='js/assets.js') }}"></script>
+<script src="{{ url_for('static', filename='js/log_sources.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tenants.js') }}"></script></body>
+</html>
